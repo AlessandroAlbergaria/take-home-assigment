@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: takehome-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=user
+      - DB_PASSWORD=password
+      - DB_DATABASE=database
+      - JWT_ACCESS_SECRET=your_jwt_secret
+      - JWT_ACCESS_EXPIRES_IN=1d
+      - REDIS_CACHE_TTL=3600
+      - REDIS_URL=redis://localhost:6379
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    volumes:
+      - ./backend:/app
+    command: npm run start:dev
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./frontend
+    container_name: takehome-frontend
+    ports:
+      - "4000:4000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:3000
+    volumes:
+      - ./frontend:/app
+    command: npm run dev
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: takehome-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+
+networks:
+  app_network:
