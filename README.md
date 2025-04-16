@@ -73,6 +73,23 @@ npm run dev # ou npm run build && npm run start
 
 ---
 
+## Rodando os Testes
+
+### Backend
+
+Execute os testes unitários e2e com:
+
+```bash
+cd backend
+npm test
+```
+
+Para ver a cobertura de testes:
+
+```bash
+npm run test:cov
+```
+
 ## Funcionalidades
 
 - Cadastro, login, edição e exclusão de usuários
@@ -86,5 +103,4 @@ npm run dev # ou npm run build && npm run start
 ## Observações
 
 - O botão "Sair" remove o token JWT do localStorage.
-- O usuário logado não aparece na listagem e não pode se autoexcluir.
 - Para resetar o banco, basta remover o volume do Postgres no Docker.

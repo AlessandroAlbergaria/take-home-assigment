@@ -3,34 +3,28 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useUsers } from "@/hooks/useUsers"
 import { User } from "@/types/user"
+import { useUser } from "@/hooks/useUser"
 
 export default function EditUserPage() {
   const { id } = useParams()
   const router = useRouter()
-  const { findUser, updateUser, isLoading } = useUsers()
+  const { updateUser, isLoading } = useUsers()
+  const {
+    data: user,
+    isLoading: loadingUser,
+    isFetched,
+  } = useUser(id as string)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [loadingUser, setLoadingUser] = useState(true)
-  const [userFetched, setUserFetched] = useState(false)
 
   useEffect(() => {
-    async function fetchUser() {
-      setLoadingUser(true)
-      try {
-        const user = await findUser(id as string)
-        if (user) {
-          setName(user.name)
-          setEmail(user.email)
-        }
-      } finally {
-        setLoadingUser(false)
-        setUserFetched(true)
-      }
+    if (user) {
+      setName(user.name)
+      setEmail(user.email)
     }
-    fetchUser()
-  }, [id])
+  }, [user])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +37,7 @@ export default function EditUserPage() {
     })
   }
 
-  if (isLoading || loadingUser || !userFetched) {
+  if (isLoading || loadingUser || !isFetched) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-green-100">
         <div className="text-xl text-gray-600 animate-pulse">Carregando...</div>
