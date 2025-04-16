@@ -5,8 +5,8 @@ import { UsersController } from './users.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthService } from 'src/auth/auth.service';
-import { JwtStrategy } from 'src/auth/strategies/jwt-strategy';
+import { AuthService } from '../auth/auth.service';
+import { JwtStrategy } from '../auth/strategies/jwt-strategy';
 import { RedisModule } from '@nestjs-modules/ioredis';
 
 @Module({

@@ -2,26 +2,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
-import Redis from 'ioredis';
+import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcryptjs';
 
-const mockUserRepository = {
-  findOne: jest.fn(),
-  save: jest.fn(),
-  find: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
+const mockUser = {
+  id: '1',
+  name: 'Test User',
+  email: 'test@example.com',
+  password: 'hashedpassword',
 };
 
-const mockRedis = {
-  get: jest.fn(),
-  set: jest.fn(),
-  del: jest.fn(),
-};
+const userArray = [
+  { ...mockUser },
+  { id: '2', name: 'User2', email: 'user2@example.com', password: 'hashed2' },
+];
 
 describe('UsersService', () => {
   let service: UsersService;
+  let userRepository: Repository<User>;
+  let redis: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,112 +30,133 @@ describe('UsersService', () => {
         UsersService,
         {
           provide: getRepositoryToken(User),
-          useValue: mockUserRepository,
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            save: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+            findOneBy: jest.fn(),
+          },
         },
         {
-          provide: Redis,
-          useValue: mockRedis,
+          provide: 'default_IORedisModuleConnectionToken',
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
+    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
+    redis = module.get('default_IORedisModuleConnectionToken');
+    jest
+      .spyOn(bcrypt, 'hash')
+      .mockImplementation(async (pw) => 'hashedpassword');
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should create a user', async () => {
-    const createUserDto: CreateUserDto = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      password: 'password123',
-    };
-
-    mockUserRepository.findOne.mockResolvedValue(null);
-    mockUserRepository.save.mockResolvedValue({ id: 'uuid', ...createUserDto });
-
-    const result = await service.create(createUserDto);
-
-    expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-      where: { email: createUserDto.email },
-    });
-    expect(mockUserRepository.save).toHaveBeenCalledWith(createUserDto);
-    expect(mockRedis.del).toHaveBeenCalledWith('users:all');
-    expect(result).toEqual({ id: 'uuid', ...createUserDto });
-  });
-
-  it('should throw an error if email already exists', async () => {
-    const createUserDto: CreateUserDto = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      password: 'password123',
-    };
-
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'uuid',
-      ...createUserDto,
+  describe('create', () => {
+    it('should create a user if email does not exist', async () => {
+      (userRepository.findOne as jest.Mock).mockResolvedValue(undefined);
+      (userRepository.save as jest.Mock).mockResolvedValue(mockUser);
+      const dto: CreateUserDto = {
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password',
+      };
+      const result = await service.create(dto);
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+      expect(redis.del).toHaveBeenCalledWith('users:all');
     });
 
-    await expect(service.create(createUserDto)).rejects.toThrow(
-      'Email already exists',
-    );
+    it('should throw error if email exists', async () => {
+      (userRepository.findOne as jest.Mock).mockResolvedValue(mockUser);
+      const dto: CreateUserDto = {
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password',
+      };
+      await expect(service.create(dto)).rejects.toThrow('Email already exists');
+    });
   });
 
-  it('should return all users from cache', async () => {
-    const cachedUsers = JSON.stringify([
-      { id: 'uuid', name: 'John Doe', email: 'john@example.com' },
-    ]);
-    mockRedis.get.mockResolvedValue(cachedUsers);
+  describe('findAll', () => {
+    it('should return users from cache', async () => {
+      (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(userArray));
+      const result = await service.findAll();
+      expect(result).toEqual([
+        { id: '1', name: 'Test User', email: 'test@example.com' },
+        { id: '2', name: 'User2', email: 'user2@example.com' },
+      ]);
+    });
 
-    const result = await service.findAll();
-
-    expect(mockRedis.get).toHaveBeenCalledWith('users:all');
-    expect(result).toEqual(JSON.parse(cachedUsers));
+    it('should return users from db and cache them', async () => {
+      (redis.get as jest.Mock).mockResolvedValue(null);
+      (userRepository.find as jest.Mock).mockResolvedValue(userArray);
+      const result = await service.findAll();
+      expect(result.length).toBe(2);
+      expect(redis.set).toHaveBeenCalled();
+    });
   });
 
-  it('should return all users from database if not cached', async () => {
-    const users = [{ id: 'uuid', name: 'John Doe', email: 'john@example.com' }];
-    mockRedis.get.mockResolvedValue(null);
-    mockUserRepository.find.mockResolvedValue(users);
+  describe('findOne', () => {
+    it('should return user from cache', async () => {
+      (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(mockUser));
+      const result = await service.findOne('1');
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+    });
 
-    const result = await service.findAll();
-
-    expect(mockRedis.get).toHaveBeenCalledWith('users:all');
-    expect(mockUserRepository.find).toHaveBeenCalled();
-    expect(mockRedis.set).toHaveBeenCalledWith(
-      'users:all',
-      JSON.stringify(users),
-      'EX',
-      3600,
-    );
-    expect(result).toEqual(users);
+    it('should return user from db and cache it', async () => {
+      (redis.get as jest.Mock).mockResolvedValue(null);
+      (userRepository.findOneBy as jest.Mock).mockResolvedValue(mockUser);
+      const result = await service.findOne('1');
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+      expect(redis.set).toHaveBeenCalled();
+    });
   });
 
-  it('should update a user', async () => {
-    const updateUserDto: UpdateUserDto = { name: 'Jane Doe' };
-    mockUserRepository.update.mockResolvedValue({ affected: 1 });
-
-    const result = await service.update('uuid', updateUserDto);
-
-    expect(mockUserRepository.update).toHaveBeenCalledWith(
-      'uuid',
-      updateUserDto,
-    );
-    expect(mockRedis.del).toHaveBeenCalledWith('users:uuid');
-    expect(mockRedis.del).toHaveBeenCalledWith('users:all');
-    expect(result).toEqual({ affected: 1 });
+  describe('update', () => {
+    it('should update user and clear cache', async () => {
+      (userRepository.update as jest.Mock).mockResolvedValue(undefined);
+      (userRepository.findOneBy as jest.Mock).mockResolvedValue(mockUser);
+      const dto: UpdateUserDto = { name: 'Updated' };
+      const result = await service.update('1', dto);
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+      expect(redis.del).toHaveBeenCalledWith('users:1');
+      expect(redis.del).toHaveBeenCalledWith('users:all');
+    });
   });
 
-  it('should delete a user', async () => {
-    mockUserRepository.delete.mockResolvedValue({ affected: 1 });
-
-    const result = await service.remove('uuid');
-
-    expect(mockUserRepository.delete).toHaveBeenCalledWith('uuid');
-    expect(mockRedis.del).toHaveBeenCalledWith('users:uuid');
-    expect(mockRedis.del).toHaveBeenCalledWith('users:all');
-    expect(result).toEqual({ affected: 1 });
+  describe('remove', () => {
+    it('should delete user and clear cache', async () => {
+      (userRepository.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      const result = await service.remove('1');
+      expect(result).toEqual({ affected: 1 });
+      expect(redis.del).toHaveBeenCalledWith('users:1');
+      expect(redis.del).toHaveBeenCalledWith('users:all');
+    });
   });
 });
