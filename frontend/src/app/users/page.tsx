@@ -71,41 +71,39 @@ export default function UsersPage() {
           </div>
         </div>
         <ul className="space-y-4">
-          {users
-            .filter((user) => user.id !== loggedUserId)
-            .map((user) => (
-              <li
-                key={user.id}
-                className="p-6 border border-gray-200 rounded-xl shadow-md bg-gradient-to-r from-blue-50 to-green-50 flex flex-col md:flex-row md:items-center md:justify-between hover:shadow-lg transition-shadow"
-              >
-                <div className="flex flex-col gap-1">
-                  <p className="font-semibold text-lg text-gray-800 flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
-                    {user.name}
-                  </p>
-                  <p className="text-gray-500">{user.email}</p>
-                  <span className="mt-1 inline-block bg-gradient-to-r from-blue-200 to-green-200 text-blue-900 px-2 py-0.5 rounded text-xs font-semibold tracking-wide shadow-sm">
-                    Id: {user.id}
-                  </span>
-                </div>
-                <div className="flex gap-2 mt-2 md:mt-0">
+          {users.map((user) => (
+            <li
+              key={user.id}
+              className="p-6 border border-gray-200 rounded-xl shadow-md bg-gradient-to-r from-blue-50 to-green-50 flex flex-col md:flex-row md:items-center md:justify-between hover:shadow-lg transition-shadow"
+            >
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                  {user.name}
+                </p>
+                <p className="text-gray-500">{user.email}</p>
+                <span className="mt-1 inline-block bg-gradient-to-r from-blue-200 to-green-200 text-blue-900 px-2 py-0.5 rounded text-xs font-semibold tracking-wide shadow-sm">
+                  Id: {user.id}
+                </span>
+              </div>
+              <div className="flex gap-2 mt-2 md:mt-0">
+                <button
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-medium shadow"
+                  onClick={() => router.push(`/users/edit/${user.id}`)}
+                >
+                  Editar
+                </button>
+                {user.id !== loggedUserId && (
                   <button
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-medium shadow"
-                    onClick={() => router.push(`/users/edit/${user.id}`)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-medium shadow"
+                    onClick={() => user.id && setConfirmDeleteId(user.id)}
                   >
-                    Editar
+                    Excluir
                   </button>
-                  {user.id !== loggedUserId && (
-                    <button
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-medium shadow"
-                      onClick={() => user.id && setConfirmDeleteId(user.id)}
-                    >
-                      Excluir
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
+                )}
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
       {confirmDeleteId && (

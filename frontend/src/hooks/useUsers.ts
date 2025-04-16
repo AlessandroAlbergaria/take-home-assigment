@@ -13,6 +13,8 @@ export const useUsers = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: fetchUsers,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const createUser = useMutation({
