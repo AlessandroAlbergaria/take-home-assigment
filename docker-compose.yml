@@ -16,13 +16,17 @@ services:
       - JWT_ACCESS_SECRET=your_jwt_secret
       - JWT_ACCESS_EXPIRES_IN=1d
       - REDIS_CACHE_TTL=3600
-      - REDIS_URL=redis://localhost:6379
-      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - ./backend/.env
     volumes:
       - ./backend:/app
     command: npm run start:dev
     depends_on:
       - redis
+      - postgres
+    networks:
+      - app_network
 
   frontend:
     build: ./frontend
@@ -36,6 +40,8 @@ services:
     command: npm run dev
     depends_on:
       - backend
+    networks:
+      - app_network
 
   postgres:
     image: postgres

@@ -27,6 +27,8 @@ cd take-home
 docker-compose up --build
 ```
 
+> **Observação:** Ao subir a aplicação, as migrations do banco de dados são executadas automaticamente pelo TypeORM.
+
 4. **Acesse os serviços:**
 
 - Frontend: http://localhost:4000
