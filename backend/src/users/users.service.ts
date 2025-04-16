@@ -83,6 +83,9 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
     await this.userRepository.update(id, updateUserDto);
     await this.redis.del(`users:${id}`);
     await this.redis.del('users:all');

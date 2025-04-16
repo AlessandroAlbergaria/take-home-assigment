@@ -11,10 +11,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(username: string, password: string): Promise<any> {
-    const user = await this.usersService.findOneByEmail(username);
+  async validateUser(email: string, password: string): Promise<any> {
+    if (!email || !password) {
+      throw new UnauthorizedException('Email ou senha inválidos');
+    }
+    const user = await this.usersService.findOneByEmail(email);
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Email ou senha inválidos');
     }
     return this.generateToken(user);
   }
