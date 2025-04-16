@@ -13,6 +13,7 @@ export default function EditUserPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loadingUser, setLoadingUser] = useState(true)
+  const [userFetched, setUserFetched] = useState(false)
 
   useEffect(() => {
     async function fetchUser() {
@@ -25,12 +26,11 @@ export default function EditUserPage() {
         }
       } finally {
         setLoadingUser(false)
+        setUserFetched(true)
       }
     }
     fetchUser()
   }, [id])
-
-  const isUserLoaded = name !== "" && email !== "" && !loadingUser
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +43,7 @@ export default function EditUserPage() {
     })
   }
 
-  if (isLoading || loadingUser || !isUserLoaded) {
+  if (isLoading || loadingUser || !userFetched) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-green-100">
         <div className="text-xl text-gray-600 animate-pulse">Carregando...</div>
